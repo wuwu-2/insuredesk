@@ -300,13 +300,14 @@ describe("时效策略卡", () => {
     expect(screen.getByText("未指定策略")).toBeInTheDocument();
     expect(screen.getByText("不设时限")).toBeInTheDocument();
 
+    const openStatusQuery = "unassigned,assigned,processing,pending_timeout,overdue";
     expect(screen.getByRole("link", { name: "特急投诉" })).toHaveAttribute(
       "href",
-      "/tickets?slaPolicyId=pol-1",
+      `/tickets?slaPolicyId=pol-1&status=${openStatusQuery}`,
     );
     expect(screen.getByRole("link", { name: "未指定策略" })).toHaveAttribute(
       "href",
-      "/tickets?slaPolicyId=none",
+      `/tickets?slaPolicyId=none&status=${openStatusQuery}`,
     );
     expect(screen.getByRole("link", { name: "超时 1" })).toHaveAttribute(
       "href",

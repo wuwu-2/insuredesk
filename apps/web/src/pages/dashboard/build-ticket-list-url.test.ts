@@ -25,13 +25,19 @@ describe("buildFirstResponseTicketListUrl", () => {
   });
 });
 
+const OPEN_STATUS_QUERY = "unassigned,assigned,processing,pending_timeout,overdue";
+
 describe("buildPolicyTicketListUrl", () => {
-  it("policy card links to its slaPolicyId", () => {
-    expect(buildPolicyTicketListUrl("pol-1")).toBe("/tickets?slaPolicyId=pol-1");
+  it("policy card links to its slaPolicyId scoped to open tickets", () => {
+    expect(buildPolicyTicketListUrl("pol-1")).toBe(
+      `/tickets?slaPolicyId=pol-1&status=${OPEN_STATUS_QUERY}`,
+    );
   });
 
   it("null policy id maps to the literal none bucket", () => {
-    expect(buildPolicyTicketListUrl(null)).toBe("/tickets?slaPolicyId=none");
+    expect(buildPolicyTicketListUrl(null)).toBe(
+      `/tickets?slaPolicyId=none&status=${OPEN_STATUS_QUERY}`,
+    );
   });
 
   it("overdue drill-down appends status=overdue", () => {
