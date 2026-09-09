@@ -279,6 +279,7 @@ export async function createTicket(
 }
 
 const listInclude = {
+  creator: { select: { name: true } },
   // Current follow-up owner is derived via JOIN, never stored
   assignee: { select: { name: true } },
   slaPolicy: { select: { name: true } },
@@ -499,6 +500,9 @@ function serializeTicketListItem(ticket: TicketListRow, now: Date) {
     noPolicyNumber: detail?.noPolicyNumber ?? false,
     status,
     displayStatus: deriveDisplayStatus(status, ticket.dueAt, now),
+    createdBy: isCreatorBackedSource(source)
+      ? (ticket.creator?.name ?? null)
+      : TICKET_SOURCE_LABELS[source],
     assigneeId: ticket.assigneeId,
     assigneeName: ticket.assignee?.name ?? null,
     dueAt: ticket.dueAt?.toISOString() ?? null,

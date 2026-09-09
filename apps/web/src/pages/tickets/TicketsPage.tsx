@@ -208,6 +208,11 @@ export function TicketsPage({ createOpen = false }: { createOpen?: boolean }) {
         render: (ticket) => TICKET_SOURCE_LABELS[ticket.source],
       },
       {
+        key: "createdBy",
+        header: "创建人",
+        render: (ticket) => ticket.createdBy ?? <Unknown />,
+      },
+      {
         key: "assignee",
         header: "责任人",
         render: (ticket) =>

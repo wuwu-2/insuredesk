@@ -104,11 +104,46 @@ describe("ticket list (Testcontainers)", () => {
       expect(item?.slaPolicyId).toBe(policyId("一般投诉"));
       expect(item?.slaPolicyName).toBe("一般投诉");
       expect(item?.source).toBe("manual");
+      expect(item?.createdBy).toBe("李主管");
       expect(item?.status).toBe("unassigned");
       // Fresh 一般投诉 is 48h from due — no computed override
       expect(item?.displayStatus).toBe("unassigned");
       expect(item?.assigneeName).toBeNull();
       expect(item && "deletedAt" in item).toBe(false);
+    });
+
+    it.each([
+      { source: "manual", expected: "李主管" },
+      { source: "file_import", expected: "李主管" },
+      { source: "external_channel", expected: "李主管" },
+      { source: "feishu_form", expected: "飞书" },
+      { source: "community", expected: "社区" },
+      { source: "jb-insurance", expected: "骏伯保险平台" },
+    ])("$source 创建人显示 $expected，与详情一致", async ({ source, expected }) => {
+      const ticket = await makeTicket({}, { source });
+      const result = await manager().ticket.list({ source: [] });
+      const detail = await manager().ticket.detail({ id: ticket.id });
+
+      expect(result.items[0]?.createdBy).toBe(expected);
+      expect(result.items[0]?.createdBy).toBe(detail.createdBy);
+    });
+
+    it("创建人缺失时返回 null", async () => {
+      await makeTicket({}, { creatorId: null });
+      const result = await manager().ticket.list({});
+      expect(result.items[0]?.createdBy).toBeNull();
+    });
+
+    it("创建人改名后显示当前姓名", async () => {
+      await makeTicket();
+      const creator = seeded.users.manager;
+      try {
+        await prisma.user.update({ where: { id: creator.id }, data: { name: "李主管（新姓名）" } });
+        const result = await manager().ticket.list({});
+        expect(result.items[0]?.createdBy).toBe("李主管（新姓名）");
+      } finally {
+        await prisma.user.update({ where: { id: creator.id }, data: { name: creator.name } });
+      }
     });
 
     it("默认排除软删工单 — soft-deleted rows appear in neither items nor total", async () => {

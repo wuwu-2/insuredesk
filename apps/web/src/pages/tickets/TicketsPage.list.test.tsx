@@ -8,6 +8,7 @@ type ListItem = {
   workOrderNumber: string;
   createdAt: string;
   source: string;
+  createdBy: string | null;
   channel: string;
   category: string;
   complaintLevel: string;
@@ -28,6 +29,7 @@ function listItem(overrides: Partial<ListItem> = {}): ListItem {
     workOrderNumber: "WO100001",
     createdAt: "2026-07-09T02:00:00.000Z",
     source: "manual",
+    createdBy: "建单人甲",
     channel: "保司",
     category: "投诉-保费收取问题",
     complaintLevel: "一般投诉",
@@ -115,6 +117,23 @@ describe("list rendering", () => {
     expect(screen.getByText("王小明")).toBeInTheDocument();
     expect(screen.getByText("已超时")).toBeInTheDocument();
     expect(screen.queryByText("已分配")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    { source: "manual", createdBy: "建单人甲", expected: "建单人甲" },
+    { source: "feishu_form", createdBy: "飞书", expected: "飞书" },
+    { source: "manual", createdBy: null, expected: "—" },
+  ])("创建人列显示 $expected（来源 $source）", async ({ source, createdBy, expected }) => {
+    canned.items = [listItem({ source, createdBy })];
+    canned.total = 1;
+    renderAt("/tickets");
+
+    const row = await screen.findByRole("row", { name: /WO100001/ });
+    const columnIndex = screen
+      .getAllByRole("columnheader")
+      .findIndex((header) => header.textContent === "创建人");
+    expect(columnIndex).toBeGreaterThan(-1);
+    expect(within(row).getAllByRole("cell")[columnIndex]).toHaveTextContent(expected);
   });
 
   it("shows an empty state when nothing matches", async () => {
