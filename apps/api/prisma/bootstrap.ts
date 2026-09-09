@@ -36,6 +36,18 @@ async function main() {
       ? '✓ Admin account "admin" created with the default password — change it in 用户管理 immediately'
       : '✓ Admin account "admin" already exists — left untouched',
   );
+
+  // 未设置则 etl_ro 无口令、scram 下无法认证,数据湖直连保持关闭。
+  const etlRoPassword = process.env.ETL_RO_PASSWORD;
+  if (etlRoPassword) {
+    await prisma.$executeRawUnsafe(
+      `ALTER ROLE etl_ro PASSWORD '${etlRoPassword.replaceAll("'", "''")}'`,
+    );
+    console.log("✓ ETL read-only role (etl_ro) password applied from ETL_RO_PASSWORD");
+  } else {
+    console.log("- ETL_RO_PASSWORD unset — etl_ro has no password, direct DB pull stays closed");
+  }
+
   console.log("\n✅ Bootstrap complete!");
 }
 

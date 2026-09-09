@@ -291,6 +291,43 @@ docker compose -f docker-compose.prod.yml up -d
 - access log 不得包含 Authorization 头:自定义 `log_format` 时排查 `$http_authorization`,
   头是 bearer key 明文,落盘即泄露。默认 combined 格式不含请求头,无需动作。
 
+## 数据湖 ETL 直连(默认关闭,ADR 0004)
+
+db 容器发布 `0.0.0.0:5432:5432` 供运维 ETL 从内网直连。**源限制完全由云安全组
+承担**——Docker 走自己的 iptables 链,ufw/firewalld 拦不到发布端口;开通前必须
+确认安全组只放行 ETL 出口网段,这是唯一纵深。
+
+消费方(运维/数据工程)的接入手册:`docs/etl-database-access.md`,开通时一并
+转交。
+
+### 开通
+
+1. 云安全组:5432 仅放行 ETL 出口网段。
+2. `.env` 加 `ETL_RO_PASSWORD="$(openssl rand -hex 32)"`,同值抄送运维。
+3. `docker compose -f docker-compose.prod.yml up -d`(recreate 后 bootstrap
+   幂等应用口令;db 容器会短暂重建,有秒级中断)。
+
+ETL 侧连接参数:宿主内网 IP:5432,角色 `etl_ro`,口令如上,库名同
+`POSTGRES_DB`。etl_ro 只能 SELECT 工单域表白名单(清单见 ADR 0004),
+users/sessions/api_keys 等认证审计面不可达。
+
+### 口令轮换
+
+改 `.env` 的 `ETL_RO_PASSWORD` → `up -d` recreate → 抄送运维新口令。
+旧口令立即失效。
+
+### 急停(发现异常连接/口令泄露)
+
+删 `docker-compose.prod.yml` 里 db 服务的 `ports:` 三行 → `up -d`,30 秒内
+5432 从宿主消失,库与 API 不受影响。回长期关闭再顺带清掉 `ETL_RO_PASSWORD`。
+
+### 巡检
+
+登服务器时顺手:`docker compose -f docker-compose.prod.yml ps` 确认各容器
+healthy;`docker logs insuredesk-db-prod --since 24h | grep -i "connection"`
+扫一眼连接来源(未开 log_connections,只有认证失败等少量日志可见——
+无连接审计是已接受的缺口,见 ADR 0004)。
+
 ### 索引迁移的锁窗口
 
 `20260902000000_open_api_keys` 迁移在 tickets(updatedAt,id)、process_logs(at,id)

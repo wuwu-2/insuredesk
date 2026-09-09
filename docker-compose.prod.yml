@@ -32,15 +32,20 @@ services:
       # 不设 TZ/PGTZ：会话时区的权威来源是迁移 20260826000000 的 ALTER DATABASE
       # （adapter-pg 无偏移序列化要求会话为 UTC）；TZ/PGTZ 只在 initdb 时生效一次，
       # 设了反而让新卷带上非 UTC 默认、且误导人以为它是生效途径。
+    ports:
+      # Published for the ops data-lake ETL pull (ADR docs/adr/0004). Source
+      # restriction is the cloud security group's job — Docker publishes ports
+      # via its own iptables chains, so ufw/firewalld never see this traffic.
+      - "0.0.0.0:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    command: ["-c", "hba_file=/etc/postgresql/pg_hba.conf"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
-    # No host port published: only the api service (same compose network)
-    # reaches Postgres. Nothing on the host or public network needs it.
 
   insuredesk-api-prod:
     # Pinned release image (GHCR is private — `docker login ghcr.io` with a PAT
