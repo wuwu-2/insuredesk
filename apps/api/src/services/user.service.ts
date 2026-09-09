@@ -109,11 +109,18 @@ function isUniqueViolationOn(error: unknown, field: string): boolean {
   }
   // Driver adapters carry the violated fields at
   // meta.driverAdapterError.cause.constraint.fields instead of meta.target.
-  const cause = (
-    error.meta?.driverAdapterError as { cause?: { constraint?: { fields?: unknown } } } | undefined
-  )?.cause;
-  const fields = cause?.constraint?.fields;
-  return Array.isArray(fields) && fields.includes(field);
+  // adapter-pg ≥7.9 prefers the pg-reported constraint name ({ index }), which
+  // pg always supplies for 23505, so fields is usually absent; index names
+  // follow <table>_<field>_key (see the init migration).
+  const constraint = (
+    error.meta?.driverAdapterError as
+      | { cause?: { constraint?: { fields?: unknown; index?: unknown } } }
+      | undefined
+  )?.cause?.constraint;
+  if (Array.isArray(constraint?.fields)) {
+    return constraint.fields.includes(field);
+  }
+  return typeof constraint?.index === "string" && constraint.index.endsWith(`_${field}_key`);
 }
 
 function throwOnDuplicateIdentity(error: unknown): never {

@@ -50,7 +50,9 @@ export function buildServer(env: Env, options?: BuildServerOptions) {
     routerOptions: { maxParamLength: 5000 },
     // 拓扑上 API 前只有一跳反代（prod 绑 127.0.0.1 仅 nginx 可达，dev 经 vite
     // proxy）：只信任这一跳追加的 XFF 项，左侧更远的项一律视为客户端伪造。
-    trustProxy: 1,
+    // fastify 5.11+ 移除了数字形式（hop 计数无法校验对端，fail-closed），
+    // 用等价的 trust 函数表达"仅信任最近一跳"。
+    trustProxy: (_address, hop) => hop === 0,
     logController: new LogController({ disableRequestLogging: env.NODE_ENV === "development" }),
     logger: buildLoggerOptions(env, options),
     genReqId: () => randomUUID(),
