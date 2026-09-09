@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # type stripping 需要 .nvmrc 钉的 Node ≥22.18,runner 自带版本不够。
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
       - name: Ensure agent labels
