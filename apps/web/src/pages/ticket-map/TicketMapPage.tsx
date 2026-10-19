@@ -20,6 +20,7 @@ import { trpc } from "@/lib/trpc";
 import { CreatedRangeFilter } from "@/pages/ticket-surface/CreatedRangeFilter";
 import { MultiSelectFilter } from "@/pages/ticket-surface/MultiSelectFilter";
 import { buildLocationTicketListUrl, layoutMapPoints } from "./map-points";
+import { RegionRanking } from "./RegionRanking";
 import type { MapArea } from "./TicketMapChart";
 
 const TicketMapChart = lazy(() =>
@@ -193,6 +194,41 @@ export function TicketMapPage() {
     [canDrill, navigate, filters],
   );
 
+  const rankingData = useMemo(() => {
+    if (!regionData || !layout) return null;
+
+    if (!focusProvinceCode) {
+      const provinceNames = new Map<string, string>();
+      for (const feature of regionData.provinces.features) {
+        provinceNames.set(String(feature.properties.adcode), feature.properties.name);
+      }
+      return {
+        regionNames: provinceNames,
+        regionCounts: layout.provinceCounts,
+        regionType: "省份",
+      };
+    }
+
+    if (!area || !cityMap?.geoJson) return null;
+    const areaNames = new Map<string, string>();
+    for (const feature of cityMap.geoJson.features) {
+      areaNames.set(String(feature.properties.adcode), feature.properties.name);
+    }
+    return {
+      regionNames: areaNames,
+      regionCounts: area.counts,
+      regionType: DISTRICT_CHILD_PROVINCES.has(focusProvinceCode) ? "区县" : "城市",
+    };
+  }, [regionData, layout, focusProvinceCode, area, cityMap]);
+
+  const onRankingRegionClick = useMemo(() => {
+    if (!canDrill) return undefined;
+    if (!focusProvinceCode) {
+      return (code: string) => setFocusProvinceCode(code);
+    }
+    return (code: string) => navigate(buildLocationTicketListUrl(code, filters));
+  }, [canDrill, focusProvinceCode, navigate, filters]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -266,6 +302,14 @@ export function TicketMapPage() {
           </Suspense>
         ) : (
           <Skeleton className="h-full w-full" />
+        )}
+        {rankingData && (
+          <RegionRanking
+            regionNames={rankingData.regionNames}
+            regionCounts={rankingData.regionCounts}
+            regionType={rankingData.regionType}
+            onRegionClick={onRankingRegionClick}
+          />
         )}
       </div>
     </div>
